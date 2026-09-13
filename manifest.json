@@ -3,7 +3,7 @@
     "appid" : "__UNI__FE98071",
     "description" : "本地离线、极简、美观的大学生课程表",
     "versionName" : "0.1.0",
-    "versionCode" : "1",
+    "versionCode" : "100",
     "transformPx" : false,
     "app-plus" : {
         "usingComponents" : true,
