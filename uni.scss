@@ -1,0 +1,34 @@
+/**
+ * uni-app 全局 SCSS 变量（可在各页面 <style lang="scss"> 中直接使用）
+ * 与 App.vue 中的 CSS 变量保持同一套令牌
+ */
+
+/* 主色系 */
+$c-primary: #8fc9c9;
+$c-primary-dim: #b4dcdc;
+$c-bg: #eaf5f5;
+$c-text: #2f4f4f;
+$c-text-sub: #6e8e8e;
+$c-text-meta: #7a9a9a;
+$c-text-faint: #a0c0c0;
+
+/* 容器 */
+$c-card: #ffffff;
+$c-border: #d8ecec;
+$c-border-soft: #e4f0f0;
+$c-input-bg: #f7fbfb;
+$c-divider: #f0f7f7;
+
+/* 语义色 */
+$c-error: #c86e6e;
+$c-error-strong: #b45a5a;
+$c-error-bg: #fdf0f0;
+$c-error-border: #e8c8c8;
+$c-warn: #b08748;
+$c-warn-strong: #c89a5a;
+$c-warn-bg: #fbf6ef;
+
+/* 圆角 */
+$r-block: 16rpx;
+$r-card: 24rpx;
+$r-pill: 999rpx;

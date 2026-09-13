@@ -1,0 +1,43 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "周课表",
+        "backgroundColor": "#EAF5F5"
+      }
+    },
+    {
+      "path": "pages/import/import",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "导入课表",
+        "backgroundColor": "#EAF5F5"
+      }
+    },
+    {
+      "path": "pages/edit/course-edit",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "编辑课程",
+        "backgroundColor": "#EAF5F5"
+      }
+    },
+    {
+      "path": "pages/settings/settings",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "设置",
+        "backgroundColor": "#EAF5F5"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "轻课表",
+    "navigationBarBackgroundColor": "#EAF5F5",
+    "backgroundColor": "#EAF5F5"
+  },
+  "uniIdRouter": {}
+}

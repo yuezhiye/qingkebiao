@@ -1,0 +1,29 @@
+# ── uni-app / HBuilderX ──
+unpackage/
+.hbuilderx/
+
+# ── Node ──
+node_modules/
+package-lock.json
+
+# ── 编辑器 ──
+.idea/
+.vscode/
+*.swp
+
+# ── 系统 ──
+.DS_Store
+Thumbs.db
+
+# ── 构建产物 ──
+dist/
+*.apk
+*.wgt
+
+# ── 备份与临时文件 ──
+*.bak
+*.tmp
+*.log
+
+# ── 本地隐私词表：含真实教室名 / 教师姓名，绝不提交 ──
+self-test.local.mjs

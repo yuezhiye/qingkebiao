@@ -1,0 +1,56 @@
+{
+    "name" : "轻课表",
+    "appid" : "__UNI__FE98071",
+    "description" : "本地离线、极简、美观的大学生课程表",
+    "versionName" : "1.0.0",
+    "versionCode" : "100",
+    "transformPx" : false,
+    "app-plus" : {
+        "usingComponents" : true,
+        "nvueStyleCompiler" : "uni-app",
+        "compilerVersion" : 3,
+        "splashscreen" : {
+            "alwaysShowBeforeRender" : true,
+            "waiting" : true,
+            "autoclose" : true,
+            "delay" : 0
+        },
+        "modules" : {
+            "Share" : {}
+        },
+        "distribute" : {
+            "android" : {
+                "permissions" : [],
+                "minSdkVersion" : 21,
+                "targetSdkVersion" : 33
+            },
+            "ios" : {
+                "dSYMs" : false
+            },
+            "sdkConfigs" : {},
+            "icons" : {
+                "android" : {
+                    "mdpi" : "static/icons/icon-48.png",
+                    "hdpi" : "static/icons/icon-72.png",
+                    "xhdpi" : "static/icons/icon-96.png",
+                    "xxhdpi" : "static/icons/icon-144.png",
+                    "xxxhdpi" : "static/icons/icon-192.png"
+                }
+            }
+        }
+    },
+    "quickapp" : {},
+    "mp-weixin" : {
+        "appid" : "",
+        "setting" : {
+            "urlCheck" : false
+        },
+        "usingComponents" : true
+    },
+    "vueVersion" : "3",
+    "locale" : "zh-Hans",
+    "uniStatistics" : {
+        "enable" : false,
+        "enabled" : false
+    }
+}
