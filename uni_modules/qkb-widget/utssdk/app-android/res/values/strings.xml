@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  小组件文案资源
+
+  ⚠️ strings.xml 里的中文**必须直写 UTF-8**，不要用 \uXXXX 转义：
+     aapt 对转义序列的处理与 Java 不同，容易编译通过但显示乱码。
+     本文件保存为无 BOM 的 UTF-8。
+-->
+<resources>
+  <string name="qkb_widget_name_4x2">轻课表 · 今日课程</string>
+  <string name="qkb_widget_desc_4x2">今天的课程，左右滑动逐节查看</string>
+  <string name="qkb_widget_name_2x2">轻课表 · 下节课</string>
+  <string name="qkb_widget_desc_2x2">显示下一节课程</string>
+</resources>

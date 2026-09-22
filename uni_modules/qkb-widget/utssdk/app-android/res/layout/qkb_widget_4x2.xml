@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4×2 小组件主布局：固定头部 + 「一次一屏」翻页式课程卡片
+
+  ┌────────────────────────────────────────────┐
+  │  今天 · 周四 · 4 节             第 3 周     │  ← 固定头（不随列表滚）
+  ├────────────────────────────────────────────┤
+  │  ┌──────────────────────────────────────┐  │
+  │  │ 08:00 – 09:40              第 1-2 节 │  │  ← 一屏 1 节课
+  │  │ 形势与政策                             │  │     整屏大卡片
+  │  │ 某某教学楼xxx教室                      │  │
+  │  │ 第 1 / 4 节                            │  │  ← 分页指示
+  │  └──────────────────────────────────────┘  │
+  └────────────────────────────────────────────┘
+                    ↕ 左右滑动整屏翻页
+
+  【为什么用 ListView 做「翻页」】
+    Android 的 RemoteViews **不支持 ViewPager / RecyclerView /
+    HorizontalScrollView**（会抛 Bad element under RemoteViews）。
+    唯一官方支持的滚动集合是 ListView / GridView。
+    widget 里的 ListView 只允许 1 行（item 横向排列）→ 天然横向滑动。
+    再把 item 宽度设为整屏宽 → 一屏正好 1 节课 → 滑动手感等同翻页。
+    ⚠️ ListView 是「连续滑动 + 惯性」，没有系统级吸附与分页点，
+       所以分页感由 item 内的「第 N / M 节」文字 + 整屏宽来营造。
+
+  数据由 QkbWidgetService.kt 的 RemoteViewsFactory 提供，
+  onUpdate 里用 setRemoteAdapter 绑定（见 WidgetData.kt）。
+
+  【空态处理】
+    今天没课时，getCount() 返回 1，那 1 项渲染成「今天没有课」的提示卡片。
+
+  ⚠️ RemoteViews 只支持有限控件：LinearLayout / FrameLayout / RelativeLayout /
+     GridLayout + TextView / ImageView / Button / ProgressBar…
+     不要用 <View> 画分隔线（不支持），用窄 LinearLayout 代替。
+
+  ⚠️ XML 注释里不能出现连续两个减号。
+
+  配色与 App 主题一致（c-bg #EAF5F5 / c-text #2F4F4F / c-meta #7A9A9A）。
+  RemoteViews 读不到 uni.scss，所以这里硬编码 —— 改主题色时同步改本文件。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/qkb_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical"
+  android:background="#EAF5F5"
+  android:paddingLeft="8dp"
+  android:paddingRight="8dp"
+  android:paddingTop="7dp"
+  android:paddingBottom="7dp">
+
+  <!-- ══════════ 固定头部：今天 + 周次 ══════════ -->
+  <LinearLayout
+    android:id="@+id/qkb_header"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical">
+
+    <TextView
+      android:id="@+id/qkb_head_title"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="今天"
+      android:textColor="#2F4F4F"
+      android:textSize="13sp"
+      android:textStyle="bold"
+      android:maxLines="1"
+      android:ellipsize="end" />
+
+    <TextView
+      android:id="@+id/qkb_head_week"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="第 1 周"
+      android:textColor="#7A9A9A"
+      android:textSize="11sp"
+      android:maxLines="1" />
+  </LinearLayout>
+
+  <!-- 头部与列表的分隔线（用窄条 LinearLayout 代替 View） -->
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="1dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="5dp"
+    android:background="#D8ECEC" />
+
+  <!-- ══════════ 「一次一屏」课程列表 ══════════ -->
+  <!--
+    ⚠️ 必须是 ListView（唯一被 RemoteViews 支持的滚动集合）。
+    ⚠️ 高度用 0dp + weight=1 撑满剩余空间 → 让卡片尽量高（信息不截断）。
+    ⚠️ 不要设 android:divider（横向下会变成竖线，观感差）。
+    ⚠️ scrollbars=none：翻页式不需要滚动条。
+  -->
+  <ListView
+    android:id="@+id/qkb_list"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:divider="@null"
+    android:dividerHeight="0dp"
+    android:scrollbars="none" />
+
+</LinearLayout>

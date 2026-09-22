@@ -371,7 +371,12 @@ function onExportJson() {
  * 把 JSON 文件交付到用户手里（App 端）
  * 首选：MediaStore 写入公共「下载」目录（Android 10+ 标准做法，零权限、不依赖 FileProvider 配置）；
  * 失败降级：分享完整 JSON 文本（Intent EXTRA_TEXT 直传，不经过剪贴板，无截断）
+ *
+ * ⚠️ 本函数为 App 端专属：依赖 `saveJsonToDownloads`（Native.js）与
+ *    `uni.shareWithSystem`（App 端 API）。整体包在条件编译 APP-PLUS 分支内，
+ *    非 App 端不存在此函数 —— 其唯一调用点在 `onExportJson` 的 APP-PLUS 分支里。
  */
+// #ifdef APP-PLUS
 function deliverJsonFile(fileName, json) {
   // 首选：写入「下载」目录
   if (saveJsonToDownloads(fileName, json)) {
@@ -396,12 +401,19 @@ function deliverJsonFile(fileName, json) {
     }
   })
 }
+// #endif
 
 /**
  * 通过 MediaStore.Downloads 写入公共下载目录（需 Android 10 / API 29+，无需任何权限）
  * @returns {boolean} 是否成功
+ *
+ * ⚠️ 整个函数体必须包在条件编译 APP-PLUS 分支内 —— 这里用的是 Native.js（`plus.android.*`），
+ *    该对象只在 App 端存在。若不加包裹，H5 / 小程序端编译到 `plus` 会直接报
+ *    `plus is not defined`（本项目目前只发 Android，故未触发，但这是隐患）。
+ *    非 App 端此函数退化为 `return false`，调用方走降级分支。
  */
 function saveJsonToDownloads(fileName, json) {
+  // #ifdef APP-PLUS
   try {
     const main = plus.android.runtimeMainActivity()
     const Build = plus.android.importClass('android.os.Build')
@@ -434,6 +446,9 @@ function saveJsonToDownloads(fileName, json) {
     console.log('[export] 写入下载目录失败，降级文本分享:', e)
     return false
   }
+  // #endif
+  // eslint-disable-next-line no-unreachable
+  return false
 }
 
 function onClearAll() {

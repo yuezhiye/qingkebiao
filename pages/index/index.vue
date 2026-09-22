@@ -208,6 +208,15 @@ import {
   clearAllCourses,
   clearDayCourses
 } from '../../utils/storage.js'
+// 桌面小组件数据桥。
+//   · utils/widget.js        —— 纯函数（组装 / 裁剪），可被 Node 自测直接 import
+//   · utils/widget-bridge.js —— 原生桥接，**静态 import 了 UTS 插件**（仅 App 端编译）
+// 这里把桥接实现注入给纯函数：静态 import 才会触发插件编译，
+// 而又不让那条 import 污染自测（Node 不认识 #ifdef）。
+import { syncWidget } from '../../utils/widget.js'
+// #ifdef APP-PLUS
+import { pushToNative } from '../../utils/widget-bridge.js'
+// #endif
 
 /* ── 状态 ── */
 const statusBarHeight = ref(20)
@@ -330,6 +339,13 @@ function refresh() {
   semester.value = s.semester
   settings.value = s.settings
   timeSlots.value = s.timeSlots
+  // 顺带把最新课表推给桌面小组件。
+  // 放在这里而不是各改动点：refresh() 是「数据读取的唯一收口」，
+  // 只要它被调用（进页面 / 返回页面 / 导入后 / 编辑后），桌面就会跟上。
+  // 失败不影响主流程（H5 / 小程序或未打自定义基座时恒为 false，静默忽略）。
+  // #ifdef APP-PLUS
+  syncWidget(s, pushToNative)
+  // #endif
 }
 
 function goToday() {
@@ -857,7 +873,7 @@ onUnload(() => {
 }
 
 .day-head {
-  width: 128rpx; /* 64px */
+  width: 128rpx;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -904,7 +920,7 @@ onUnload(() => {
 }
 
 .day-col {
-  width: 128rpx; /* 64px */
+  width: 128rpx;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -912,7 +928,7 @@ onUnload(() => {
 }
 
 .slot {
-  height: 292rpx; /* 146px，与画稿一致 */
+  height: 292rpx;
   flex-shrink: 0;
 }
 

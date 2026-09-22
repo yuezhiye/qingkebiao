@@ -1,0 +1,61 @@
+/**
+ * 轻课表 · 桌面小组件 · 插件入口（UTS）
+ *
+ * 对外只暴露两个方法：
+ *   syncWidgetData(json)   App 侧把「今日 / 明日课程」组装成 JSON 串传进来，
+ *                          这里转交给原生 Kotlin 侧写进 SharedPreferences，
+ *                          然后立刻通知桌面组件重绘。
+ *   clearWidgetData()      清空桌面数据（App 内「清空全部课程」时调用）。
+ *
+ * ────────────────────────────────────────────────────────────
+ * 【⚠️ 为什么这里只是个「转发层」】
+ *   Android 系统要通过 AndroidManifest.xml 里的 android:name 反射实例化
+ *   QkbWidgetProvider 这个类（继承 AppWidgetProvider）。而 **UTS 编译器的产物是
+ *   UTS 模块（JS 桥接层），不保证其中定义的 class 会变成可被系统实例化的
+ *   Kotlin 类** —— 实测打包后 Manifest 里 receiver 指向的类并不存在，
+ *   系统静默忽略 → 桌面上找不到小组件。
+ *
+ *   → 因此所有「需要在 Manifest 注册的组件 + 使用 Android 类型的渲染逻辑」
+ *     都放在同目录的原生 .kt 文件里（WidgetData.kt / DoAppWidget.kt），
+ *     UTS 只做「拿上下文 → 转发调用」这一件事。
+ *
+ * 【为什么由 App 侧组装 JSON，而不是原生侧读 uni 的 storage】
+ *   原生侧读不到 uni-app 的 storage（不同进程 + 不同存储机制）。
+ *   所以走"App 组装 → 原生落盘 → 组件读取"这条单向链路。
+ *   好处是组装逻辑复用 utils/schedule.js / utils/week.js 的既有函数，不重复实现。
+ * ────────────────────────────────────────────────────────────
+ */
+
+import { UTSAndroid } from 'io.dcloud.uts'
+import { QkbNative } from 'uts.sdk.modules.qkbWidget'
+
+/**
+ * 写入小组件数据并立即刷新桌面。
+ *
+ * @param json 形如 {"today":[...],"tomorrow":[...],"week":3,"updatedAt":...}
+ *             —— 结构见 utils/widget.js 的 buildWidgetPayload
+ * @return 是否写入成功
+ */
+export function syncWidgetData(json: string): boolean {
+  try {
+    const context = UTSAndroid.getAppContext()
+    return QkbNative.syncData(context, json)
+  } catch (e) {
+    console.error('[qkb-widget] syncWidgetData 异常', e)
+    return false
+  }
+}
+
+/**
+ * 清除小组件数据（App 内「清空全部课程」时调用）。
+ * 让桌面立刻显示"暂无课程"，而不是残留旧课表。
+ */
+export function clearWidgetData(): boolean {
+  try {
+    const context = UTSAndroid.getAppContext()
+    return QkbNative.clearData(context)
+  } catch (e) {
+    console.error('[qkb-widget] clearWidgetData 异常', e)
+    return false
+  }
+}

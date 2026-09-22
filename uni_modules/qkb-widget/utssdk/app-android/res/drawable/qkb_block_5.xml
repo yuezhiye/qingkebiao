@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  课程色块圆角背景 · 5 号色「淡紫」
+
+  色值来自 utils/color.js 的 COLOR_POOL[5].fill。
+  corners = 8dp。
+
+  ⚠️ 本文件是 6 个色块的最后一个（0~5）。数量必须与
+     utils/widget.js 的 COLOR_POOL_SIZE 一致，否则原生选色会越界。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+  android:shape="rectangle">
+  <solid android:color="#F2ECF4" />
+  <corners android:radius="8dp" />
+</shape>

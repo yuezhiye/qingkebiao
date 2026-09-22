@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  课程色块圆角背景 · 1 号色「淡蓝」
+
+  色值来自 utils/color.js 的 COLOR_POOL[1].fill。
+  改色时 6 个 qkb_block_N.xml 一起改，并与 color.js 对齐。
+  corners = 8dp。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+  android:shape="rectangle">
+  <solid android:color="#EAF0F8" />
+  <corners android:radius="8dp" />
+</shape>

@@ -1,0 +1,22 @@
+/**
+ * 轻课表 · 桌面小组件 · 对外 API 声明
+ *
+ * 只声明 App 侧会调用的两个方法。interface.uts 与实现（index.uts）是
+ * "声明与实现"的关系，HBuilderX 会据此给出语法提示。
+ */
+
+/**
+ * 同步课表数据到桌面小组件，并立即触发重绘。
+ *
+ * @param json 由 utils/widget.js#buildWidgetPayload 组装的 JSON 串
+ *             结构：{ today: Course[], tomorrow: Course[], week: number, updatedAt: number }
+ *             Course 字段：{ name, place, start, end }
+ * @return 是否写入成功（false 时不影响 App 功能，仅桌面不更新）
+ */
+export type SyncWidgetData = (json: string) => boolean
+
+/**
+ * 清空小组件数据（清空全部课程时用），使桌面显示"暂无课程"。
+ * @return 是否成功
+ */
+export type ClearWidgetData = () => boolean

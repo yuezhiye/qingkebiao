@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  轻课表 · 桌面小组件 · Android 清单
+
+  ⚠️ receiver 的 android:name 必须写全限定名，否则系统找不到类 → 小组件加不上桌面。
+     规则：uni_modules 下的 UTS 插件 → uts.sdk.modules.(插件ID转驼峰)
+           qkb-widget → uts.sdk.modules.qkbWidget
+
+  ⚠️ android:exported 必须为 true —— APPWIDGET_UPDATE 是**系统（launcher /
+     AppWidgetService）发来的跨应用广播**，设 false 系统发不进来，组件无法工作。
+
+  ⚠️ **package 属性必须写**，且必须与 Kotlin 文件的 package 完全一致（2026-09-17 实测踩坑）：
+     aapt2 编译插件资源时报 `<manifest> must have a 'package' attribute`；
+     若这里漏写，R 类就生成不出来 → Kotlin 侧报 `找不到名称"R"`。
+     规则：uni_modules 下的 UTS 插件 → uts.sdk.modules.(插件ID转驼峰)
+           qkb-widget → uts.sdk.modules.qkbWidget
+     **三处必须完全一致**：本文件 package / 所有 .kt 的 package / index.uts 的 import 包名。
+
+  ⚠️ 本文件任何改动都需要**重新制作自定义基座 / 云打包**才生效，标准基座不加载。
+
+  权限：无。小组件只读本地 SharedPreferences，不联网、不申请任何权限。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="uts.sdk.modules.qkbWidget">
+
+  <application>
+
+    <!-- ── 桌面小组件（4×2：今天课程，横向滑动）── -->
+    <receiver
+      android:name="uts.sdk.modules.qkbWidget.QkbWidgetProvider"
+      android:exported="true"
+      android:label="@string/qkb_widget_name_4x2">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/qkb_widget_4x2_info" />
+    </receiver>
+
+    <!--
+      ── 横向课程列表的数据源 Service ──
+
+      【为什么需要它】
+        4×2 里要横向滑动看课程，用的是 ListView（RemoteViews 唯一支持的滚动集合）。
+        而 ListView 的内容**不能**在 provider 里直接塞，必须走官方链路：
+          setRemoteAdapter(intent) → 系统绑定本 Service → Factory.getViewAt() 逐项渲染。
+        没注册这个 Service → 列表一片空白，**且不会报任何错**（最坑的一种）。
+
+      ⚠️ android:permission="android.permission.BIND_REMOTEVIEWS" **必须写** ——
+         这是系统（AppWidgetService）绑定该 Service 的必要权限。
+         漏写则系统拒绝绑定，列表恒为空。
+      ⚠️ android:exported="false" —— 该 Service 只允许系统通过权限绑定，
+         不对外开放（配合上面的 permission 一起用，与 widget receiver 的 true 不同）。
+    -->
+    <service
+      android:name="uts.sdk.modules.qkbWidget.QkbWidgetService"
+      android:exported="false"
+      android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+  </application>
+</manifest>

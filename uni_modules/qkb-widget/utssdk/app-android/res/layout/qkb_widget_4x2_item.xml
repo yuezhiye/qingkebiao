@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4×2 小组件 · 列表项 = 一节课的整屏大卡片
+
+  【「一次一屏」怎么实现】
+    ListView 的 item 宽度设为 **match_parent**（= 列表可视区宽度），
+    于是一屏正好显示 1 节课；横向滑动即整屏翻页。
+    这是 Android 小组件里最接近 ViewPager「翻页 + 吸附」的形态 ——
+    真正的 ViewPager / RecyclerView 会被 RemoteViews 拒绝
+    （抛 Bad element under RemoteViews）。
+
+  【尺寸】
+    width  = match_parent（整屏，由 ListView 决定）
+    height = match_parent（撑满列表区；列表区在主布局里是 0dp + weight=1）
+    ⚠️ 这里可以用 match_parent —— 因为 item 的宽度由 ListView 的可视宽决定，
+       高度由列表区高度决定，都是**已确定的**尺寸，不会像 wrap_content 那样塌陷。
+       配对的是外层 padding 容器（用于左右留白），内层卡片仍用 match_parent。
+
+  【为什么高度不再写死 70dp】
+    旧版一屏放多张卡，高度必须固定才排得下；
+    现在一屏 1 张，用 match_parent 让卡片**自适应列表区高度**，
+    横屏 / 不同机型的组件高度差异都能自动适配，信息也不会被压扁。
+
+  【圆角】
+    根容器用 @drawable/qkb_block_N 作背景 —— 运行时按 colorSeed 换成
+    qkb_block_0 ~ qkb_block_5（见 QkbWidgetService.kt）。
+    这里默认给 0 号，仅作预览与兜底。
+    ⚠️ 圆角会被子 View 的背景盖住 —— 所以内部所有 TextView 都**不设背景**。
+
+  ⚠️ RemoteViews 支持的控件有限：LinearLayout / FrameLayout / RelativeLayout /
+     GridLayout + TextView / ImageView / Button / ProgressBar…
+     不要用 <View> 画线（不支持），用窄 LinearLayout 代替。
+
+  ⚠️ XML 注释里不能出现连续两个减号。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="horizontal"
+  android:paddingLeft="2dp"
+  android:paddingRight="2dp">
+
+  <!-- 卡片本体：圆角背景 + 信息，撑满整屏 -->
+  <LinearLayout
+    android:id="@+id/qkb_root_item"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/qkb_block_0"
+    android:gravity="center_vertical"
+    android:paddingLeft="12dp"
+    android:paddingRight="12dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+    <!-- 第一行：时间 + 节次（同一行左右分布） -->
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:gravity="center_vertical">
+
+      <!-- 时间：08:00 – 09:40 -->
+      <TextView
+        android:id="@+id/qkb_item_time"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="08:00 – 09:40"
+        android:textColor="#2F4F4F"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+      <!-- 节次：第 1-2 节 -->
+      <TextView
+        android:id="@+id/qkb_item_section"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="6dp"
+        android:text="第 1-2 节"
+        android:textColor="#7A9A9A"
+        android:textSize="11sp"
+        android:maxLines="1" />
+    </LinearLayout>
+
+    <!-- 课程名：最多 2 行，整屏宽，不会像旧版那样被压缩 -->
+    <TextView
+      android:id="@+id/qkb_item_name"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:text="课程名称"
+      android:textColor="#2F4F4F"
+      android:textSize="14sp"
+      android:maxLines="2"
+      android:ellipsize="end" />
+
+    <!-- 地点（可空，空时会被 setVisibility 隐藏） -->
+    <TextView
+      android:id="@+id/qkb_item_place"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:text="某某教学楼A-101"
+      android:textColor="#7A9A9A"
+      android:textSize="11sp"
+      android:maxLines="1"
+      android:ellipsize="end" />
+
+    <!-- 分页指示：第 2 / 4 节 -->
+    <TextView
+      android:id="@+id/qkb_item_page"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="3dp"
+      android:text=""
+      android:textColor="#9AB4B4"
+      android:textSize="10sp"
+      android:maxLines="1" />
+
+  </LinearLayout>
+</LinearLayout>

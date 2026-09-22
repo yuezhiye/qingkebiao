@@ -524,6 +524,252 @@ setCourses([
 ])
 eq(loadState().courses.length, 1, '写入后读回 1 门课（storage 往返正常）')
 
+// ═══════════════════════════════════════════════════════════════════════
+// 桌面小组件 · 数据桥（纯函数部分）
+//
+// 原生渲染在真机验证；这里把关的是「交给桌面的数据对不对」——
+// 周次过滤、排序、明日推进、隐私边界，这些错了在真机上一样看得出，
+// 但在这里能早发现，且不需要打基座。
+// ═══════════════════════════════════════════════════════════════════════
+console.log('\n── 桌面小组件数据桥 ──')
+{
+  const { pickDay, buildWidgetPayload, courseLines, pickColorSeed, COLOR_POOL_SIZE } =
+    await import('./utils/widget.js')
+  const { COLOR_POOL, pickColor, hashString: hashStringExport } =
+    await import('./utils/color.js')
+
+  const SLOTS = [
+    { section: 1, start: '08:00', end: '08:45' },
+    { section: 2, start: '08:55', end: '09:40' },
+    { section: 3, start: '10:00', end: '10:45' },
+    { section: 4, start: '10:55', end: '11:40' },
+    { section: 5, start: '14:00', end: '14:45' },
+    { section: 6, start: '14:55', end: '15:40' }
+  ]
+
+  // 虚构课表：周一 3 门（用于测「只列 3 条 + 共 N 节」）、周二 1 门、周三 4 门
+  const COURSES = [
+    { id: 'w1', name: '高等数学', place: '某某教学楼A-101', teacher: '张老师',
+      day: 1, sectionStart: 1, sectionEnd: 2, weeks: [[1, 16]] },
+    { id: 'w2', name: '大学英语', place: '某某教学楼B-202', teacher: '李老师',
+      day: 1, sectionStart: 3, sectionEnd: 4, weeks: [[1, 16]] },
+    { id: 'w3', name: '程序设计基础', place: '', teacher: '王老师',
+      day: 1, sectionStart: 5, sectionEnd: 6, weeks: [[1, 16]] },
+    { id: 'w4', name: '体育（羽毛球）', place: '体育馆',
+      day: 2, sectionStart: 3, sectionEnd: 4, weeks: [[1, 16]] },
+    { id: 'w5', name: '大学物理', place: '某某教学楼C-303',
+      day: 3, sectionStart: 1, sectionEnd: 2, weeks: [[1, 16]] }
+  ]
+
+  // ── pickDay：过滤 + 排序 + 字段精简 ──
+  const mon = pickDay(COURSES, 1, 5, SLOTS)
+  eq(mon.length, 3, 'pickDay：周一取到 3 门课')
+  eq(mon[0].name, '高等数学', 'pickDay：按开始节次升序（第 1 门是第 1-2 节的课）')
+  eq(mon[2].name, '程序设计基础', 'pickDay：第 3 门是第 5-6 节的课')
+  eq(mon[0].start, '08:00', 'pickDay：起止时间从 timeSlots 正确映射')
+  eq(mon[0].end, '09:40', 'pickDay：结束时间取 sectionEnd 对应节次的 end')
+  eq(mon[2].place, '', 'pickDay：无地点时 place 为空串（不填 undefined）')
+  // 节次号原样带出（原生侧用来显示「第 N-M 节」）
+  eq(mon[0].sectionStart, 1, 'pickDay：带出 sectionStart')
+  eq(mon[0].sectionEnd, 2, 'pickDay：带出 sectionEnd')
+  eq(mon[2].sectionStart, 5, 'pickDay：第 3 门的 sectionStart = 5')
+  // 🔐 隐私边界：教师姓名**不得**进桌面
+  eq(Object.keys(mon[0]).sort(),
+    ['colorSeed', 'end', 'name', 'place', 'sectionEnd', 'sectionStart', 'start'],
+    'pickDay：字段集固定为 7 个 —— 教师姓名不外露给桌面')
+
+  // 周次过滤：第 20 周时该课不在范围（weeks [[1,16]]）
+  eq(pickDay(COURSES, 1, 20, SLOTS).length, 0, 'pickDay：超出课程周次范围时过滤为空')
+
+  // 单双周：周一 1-16 全周 + 一门 1-16单
+  const parity = [
+    { id: 'p1', name: '单周课', place: 'X', day: 1, sectionStart: 1, sectionEnd: 2, weeks: [[1, 16, '单']] }
+  ]
+  eq(pickDay(parity, 1, 3, SLOTS).length, 1, 'pickDay：第 3 周（单周）单周课可见')
+  eq(pickDay(parity, 1, 4, SLOTS).length, 0, 'pickDay：第 4 周（双周）单周课被过滤')
+
+  // ── 色号：桌面圆角色块的颜色来源 ──
+  //
+  // 关键约束：**桌面色号必须与 App 内色块颜色一致**（同一门课两处同色）。
+  //   App 侧：utils/color.js#pickColor → COLOR_POOL[hashString(seed) % 6]
+  //   桌面侧：widget.js#pickColorSeed → hashString(seed) % 6，把下标传给原生
+  // 若两边算法漂移，用户会看到「App 里淡青、桌面淡粉」。
+  eq(COLOR_POOL_SIZE, COLOR_POOL.length, '色号：COLOR_POOL_SIZE 与 color.js 色池长度一致')
+  eq(COLOR_POOL_SIZE, 6, '色号：色池为 6 色（res/drawable/qkb_block_0..5.xml 数量必须与之一致）')
+
+  // 逐一核对：对每个色号都能找到同色的课名，反之亦然
+  const seedNames = ['高等数学', '大学英语', '程序设计基础', '毛泽东思想',
+                     '计算机网络与应用', 'XR交互设计', '大学物理', '体育']
+  eq(seedNames.every((n) => pickColorSeed({ name: n }) === COLOR_POOL.indexOf(pickColor({ name: n }))),
+    true, '色号：与 App pickColor 取到同一个色池下标（八门课逐一核对）')
+
+  eq(seedNames.every((n) => {
+    const s = pickColorSeed({ name: n })
+    return Number.isInteger(s) && s >= 0 && s < COLOR_POOL_SIZE
+  }), true, '色号：恒为 0 ~ 5 的整数（原生据此选 drawable，越界会崩）')
+
+  // 同课名 → 同色号（跨调用稳定，绝不随顺序漂）
+  eq(pickColorSeed({ name: '高等数学' }), pickColorSeed({ name: '高等数学' }),
+    '色号：同课名两次取值相同（不随调用顺序漂）')
+
+  // colorSeed 字段优先于 name（与 pickColor 的取值顺序一致）
+  eq(pickColorSeed({ colorSeed: '自定义种子', name: '高等数学' }),
+    COLOR_POOL.indexOf(pickColor({ colorSeed: '自定义种子', name: '高等数学' })),
+    '色号：colorSeed 字段优先于 name（与 App 取值顺序一致）')
+
+  // 异常输入不抛错、不返回越界值
+  eq(pickColorSeed({}), COLOR_POOL.indexOf(pickColor({})),
+    '色号：空对象 → 与 App 同色（不抛错）')
+  eq(pickColorSeed(null), COLOR_POOL.indexOf(pickColor(null)),
+    '色号：null → 与 App 同色（不抛错）')
+
+  // ── 原生侧 hash 的等价性（锁死跨语言对齐）──
+  //
+  // 🔥 这里验的是 QkbWidgetService.kt#hashString 的**算法**，不是它的代码。
+  //    背景：桌面要显示与 App 相同的颜色，原生侧必须用与 utils/color.js 完全
+  //    一致的 djb2 实现。而这是**跨语言**复刻，最易出的错是「语义近似的写法其实不等价」。
+  //
+  //    2026-09-17 实际踩过：原生侧初版写 `h and 0x7FFFFFFF`「保证非负」，
+  //    看着比 Math.abs 更稳，实则对负数而言两者**差别巨大**（不是差 1）：
+  //      `毛泽东思想` → abs = 455830743，and = 1691652905
+  //                    → 取模 3 vs 5 → 颜色直接跳到别的色号 ❌
+  //    20 个课名样本里，有 4 个因此取到不同颜色。
+  //
+  //    下面用 JS 复刻 Kotlin 的实现（Int 溢出 + Math.abs），逐一比对。
+  //    ⚠️ 若有人把 Kotlin 侧的 abs 改回掩码，这里会立刻红。
+  const kotlinHash = (s) => {
+    let h = 5381
+    for (let i = 0; i < s.length; i++) {
+      // 复刻 Kotlin：Int 是 32 位 → 每次累加后按 |0 截断（等价于 Kotlin 的自然溢出）
+      h = ((h << 5) + h + s.charCodeAt(i)) | 0
+    }
+    // 复刻 Kotlin 的 kotlin.math.abs(h)
+    return Math.abs(h)
+  }
+  // 复刻原生侧的兜底逻辑：越界一律退回 0 号色
+  const kotlinColorIndex = (s) => {
+    const mod = kotlinHash(s) % COLOR_POOL_SIZE
+    return (mod >= 0 && mod < COLOR_POOL_SIZE) ? mod : 0
+  }
+
+  const alignNames = ['高等数学', '大学英语', '程序设计基础', '毛泽东思想',
+                      '计算机网络与应用', 'XR交互设计', '大学物理', '体育',
+                      '形势与政策', '某某教学楼A-101', '某某教学楼xxx教室',
+                      '', 'a', 'zzz', '计算机', '数据结构与算法',
+                      '大学体育（羽毛球）', '马克思主义基本原理', '线性代数',
+                      '概率论与数理统计']
+  const mismatches = alignNames.filter(
+    (n) => kotlinColorIndex(n) !== pickColorSeed({ name: n })
+  )
+  eq(mismatches, [],
+    `色号：原生 Kotlin 复刻与 JS 取色一致（${alignNames.length} 个样本）`)
+  eq(kotlinColorIndex('毛泽东思想'), pickColorSeed({ name: '毛泽东思想' }),
+    '色号：🔴 回归哨兵 —— 原名中过枪的那个（abs 与掩码之差）')
+
+  // hash 自身相等（不只是取模后相等，避免「碰巧同色」掩盖算法漂移）
+  eq(alignNames.every((n) => kotlinHash(n) === hashStringExport(n)), true,
+    '色号：原生 hash 与 JS hashString 逐值相等（不止取模后相等）')
+
+  // ── buildWidgetPayload：明日推进 ──
+  // 2026-09-16 是周三 → todayDay = 3
+  const WED = new Date(2026, 8, 16, 10, 0, 0)
+  eq(WED.getDay(), 3, '前置：2026-09-16 确实是周三')
+  const p1 = buildWidgetPayload(
+    { courses: COURSES, semester: { startDate: '2026-08-31', totalWeeks: 20 }, timeSlots: SLOTS },
+    WED
+  )
+  eq(p1.todayDay, 3, 'payload：todayDay = 周三(3)')
+  eq(p1.today.length, 1, 'payload：周三取到 1 门课')
+  eq(Array.isArray(p1.today), true, 'payload：today 恒为数组（原生侧才能安全遍历）')
+  eq(typeof p1.updatedAt, 'number', 'payload：带 updatedAt 时间戳')
+  eq(p1.week, 3, 'payload：周次计算正确（09-16 属第 3 周）')
+  // 当前小组件只显示今天 → payload 里不再有 tomorrow / tomorrowDay
+  eq('tomorrow' in p1, false, 'payload：不再输出 tomorrow（小组件只显示今天）')
+  eq('tomorrowDay' in p1, false, 'payload：不再输出 tomorrowDay')
+  eq(Object.keys(p1).sort(), ['today', 'todayDay', 'updatedAt', 'week'],
+    'payload：顶层字段集固定为 4 个')
+
+  // 空课表不崩
+  const p3 = buildWidgetPayload({ courses: [], semester: {}, timeSlots: [] }, WED)
+  eq(p3.today, [], 'payload：空课表 → today 为空数组')
+  eq(p3.week >= 1, true, 'payload：缺 semester 时周次兜底为 >= 1（不出现 0 / NaN）')
+
+  // ── courseLines：封面文案 ──
+  eq(courseLines([]), ['暂无课程'], 'courseLines：空列表 → 提示文案')
+  eq(courseLines(mon), ['08:00 高等数学 · 某某教学楼A-101',
+                        '10:00 大学英语 · 某某教学楼B-202',
+                        '14:00 程序设计基础'],
+    'courseLines：恰好 3 门 → 只 3 行，不出现「共 N 节」')
+  const lines = courseLines(mon, 2)
+  eq(lines.length, 3, 'courseLines：max=2 且共 3 门 → 2 行 + 1 行溢出提示')
+  eq(lines[0], '08:00 高等数学 · 某某教学楼A-101', 'courseLines：有地点时带分隔符')
+  eq(lines[1], '10:00 大学英语 · 某某教学楼B-202', 'courseLines：第 2 行正确')
+  eq(lines[2], '共 3 节', 'courseLines：溢出时提示总节数')
+  eq(courseLines([mon[2]]), ['14:00 程序设计基础'], 'courseLines：无地点时不出现多余分隔符')
+  eq(courseLines([mon[0]]).length, 1, 'courseLines：未溢出时不显示总节数行')
+
+  // ── syncWidget / clearWidget：注入式桥接契约 ──
+  //
+  // ⚠️ 这两个函数**不再自己 import UTS 插件**，而是由调用方注入推送实现。
+  //    原因见 utils/widget-bridge.js 头注释：插件必须靠顶层静态 import 才会被编译，
+  //    但那条 import 会让 Node 自测报 ERR_MODULE_NOT_FOUND。
+  //    → 所以这里锁死「注入契约」，防止以后有人把它们改回自解析插件。
+  const { syncWidget, clearWidget } = await import('./utils/widget.js')
+
+  const STATE = {
+    courses: COURSES,
+    semester: { startDate: '2026-08-31', totalWeeks: 20 },
+    timeSlots: SLOTS
+  }
+
+  // 正常注入：payload 应被 JSON 串化后原样递给 push
+  let received = null
+  const okPush = (json) => { received = json; return true }
+  eq(syncWidget(STATE, okPush), true, 'syncWidget：注入 push 且成功 → 返回 true')
+  eq(typeof received, 'string', 'syncWidget：传给 push 的是 JSON 字符串')
+  const parsed = JSON.parse(received)
+  eq(Array.isArray(parsed.today), true,
+    'syncWidget：JSON 反序列化后 today 仍是数组')
+  // 🔐 隐私边界：传出去的每一门课都只许有这 7 个字段（教师姓名绝不放行）
+  //    ⚠️ 不断言「today 非空」—— 那取决于运行当天是周几（预设课表只有周一~周三有课），
+  //       会随日期漂。改为：**在固定周三跑一遍**，那时 today 必定有课，逐条校验。
+  const WED_STATE_JSON = JSON.parse(
+    JSON.stringify(buildWidgetPayload(STATE, WED))
+  )
+  const wedCourses = WED_STATE_JSON.today
+  eq(wedCourses.length > 0, true, 'syncWidget：固定周三下当天至少取到 1 门（前置）')
+  eq(wedCourses.every((c) => !('teacher' in c)), true,
+    'syncWidget：🔐 教师姓名不得出现在传给桌面的 JSON 里')
+  eq(wedCourses.every(
+    (c) => Object.keys(c).sort().join() ===
+      'colorSeed,end,name,place,sectionEnd,sectionStart,start'
+  ), true, 'syncWidget：🔐 传给桌面的每门课仅 7 个约定字段（不含教师姓名）')
+  // 色号也要在传输后存活（JSON 往返把数字保留为数字）
+  eq(wedCourses.every((c) => Number.isInteger(c.colorSeed) && c.colorSeed >= 0 && c.colorSeed < 6),
+    true, 'syncWidget：JSON 往返后 colorSeed 仍是 0~5 的整数')
+
+  // push 返回 false → 如实透传，不吞错
+  eq(syncWidget(STATE, () => false), false, 'syncWidget：push 返回 false → 返回 false')
+
+  // 未注入（H5 / 小程序 / 自测环境）→ 必须静默 false，不抛错
+  eq(syncWidget(STATE), false, 'syncWidget：未注入 push → 静默返回 false（不抛错）')
+  eq(syncWidget(STATE, null), false, 'syncWidget：push 为 null → 静默返回 false')
+  eq(syncWidget(STATE, 'not-a-fn'), false, 'syncWidget：push 非函数 → 静默返回 false')
+
+  // 组装阶段就坏掉（state 传 null）也不得抛错 —— 桌面同步绝不能拖垮 App 主流程
+  let threw = false
+  try { syncWidget(null, okPush) } catch { threw = true }
+  eq(threw, false, 'syncWidget：state 异常时不抛错（失败不影响主流程）')
+
+  // clearWidget 同一套契约
+  let cleared = 0
+  eq(clearWidget(() => { cleared++; return true }), true, 'clearWidget：注入 clear 且成功 → 返回 true')
+  eq(cleared, 1, 'clearWidget：确实调用了注入的实现')
+  eq(clearWidget(() => false), false, 'clearWidget：实现返回 false → 返回 false')
+  eq(clearWidget(), false, 'clearWidget：未注入 → 静默返回 false')
+  eq(clearWidget(null), false, 'clearWidget：注入 null → 静默返回 false')
+}
+
 console.log(`\n${'─'.repeat(40)}`)
 console.log(`通过 ${pass} / 失败 ${fail}`)
 console.log(`${'─'.repeat(40)}\n`)

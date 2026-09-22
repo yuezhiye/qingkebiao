@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4×2 小组件规格（今天课程 · 静态 3 槽位 · 卡片自适应高度）
+
+  尺寸换算：Android 桌面格子宽 70dp、高 70dp（API 31+ 支持 targetCellWidth/Height）
+    4 列 → minWidth  = 4×70 - 30 = 250dp
+    2 行 → minHeight = 2×70 - 30 = 110dp
+
+  【为什么是「自适应布局」而不是横竖屏两套布局】
+    ⚠️ Android 小组件**不支持 layout-land / layout-port 两套布局**：
+       组件渲染在 launcher 的宿主进程里，系统只给一个 RemoteViews，
+       转屏时也不会回调 AppWidgetProvider。
+    → 所以横竖屏适配只能靠**布局自身的弹性**：
+       · resizeMode 放开 vertical → 用户在横屏/大屏可以把组件拉高
+       · 课程卡用 weight 均分剩余高度 → 高度自适应，信息不截断
+       · 头部用 weight 分配 → 宽度变化时自动重排
+      这样横屏拉宽拉高后，卡片自然变大，等效于「随屏幕重排」。
+
+    updatePeriodMillis：**最小 30 分钟**（Android 硬约束，写小于 1800000 会被系统静默改回）。
+      含义：小组件最多每 30 分钟自动刷新一次 → **不显示分钟级倒计时**（会明显滞后）。
+      真正的刷新靠 App 打开时主动写入数据（见 utils/widget.js）。
+
+    previewLayout（API 31+）与 previewImage 二选一即可；这里用 previewLayout，
+    免去额外出一张预览图，且预览即为真实布局（课程卡是空的，属正常）。
+
+    widgetCategory="home_screen"：只在桌面（不含锁屏）。
+
+  【🔥 为什么换文件名（qkb_widget_4x2 → qkb_widget_static）】
+    launcher 侧的 AppWidgetHostView 在收到新 RemoteViews 时会先问一句：
+      「这棵新视图树能不能复用在已有的 mView 上？」
+    判定函数是 **RemoteViews.canRecycleView(View)**（源码 core/java/android/widget/RemoteViews.java）：
+      · 布局 id 相同 + 视图数量/类型能对应 → **reapply（等价于 patch）**
+      · 否则 → 走 apply() 重新 inflate
+    ⚠️ 所以**改了布局结构却沿用同名 layout 文件**时，launcher 会走 reapply，
+      新加的控件 id 在旧视图树里找不到 → **静静地什么都不做**，
+      表现就是「组件还在但内容全空」，而且零报错。
+    ✅ 正解：**给新结构换一个 layout 文件名**，让 getLayoutId() 变化
+      → canRecycleView() 返回 false → 强制重新 inflate，旧视图树被丢弃。
+    📌 因此每次改布局「结构」都要新建 layout 文件并同步改这里的
+      initialLayout / previewLayout。
+
+  ⚠️ 改了本文件 / res / AndroidManifest.xml 都要**重新制作自定义基座**才生效。
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+  android:description="@string/qkb_widget_desc_4x2"
+  android:initialLayout="@layout/qkb_widget_static"
+  android:minWidth="250dp"
+  android:minHeight="110dp"
+  android:previewLayout="@layout/qkb_widget_static"
+  android:resizeMode="horizontal|vertical"
+  android:targetCellWidth="4"
+  android:targetCellHeight="2"
+  android:updatePeriodMillis="1800000"
+  android:widgetCategory="home_screen" />

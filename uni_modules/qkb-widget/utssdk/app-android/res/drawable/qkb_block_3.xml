@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  课程色块圆角背景 · 3 号色「淡黄」
+
+  色值来自 utils/color.js 的 COLOR_POOL[3].fill。
+  corners = 8dp。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+  android:shape="rectangle">
+  <solid android:color="#F6EFE2" />
+  <corners android:radius="8dp" />
+</shape>

@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  轻课表 · 4×2 桌面小组件主布局（静态版 · 无 ListView）
+
+  ┌────────────────────────────────────────────┐
+  │  今天 · 周四 · 4 节             第 3 周     │  ← 固定头
+  ├────────────────────────────────────────────┤
+  │  08:00 - 09:40                    第 1-2 节 │
+  │  形势与政策                                 │  ← 课程卡 ×3
+  │  某某教学楼xxx教室                          │
+  ├────────────────────────────────────────────┤
+  │  10:00 - 11:40                    第 3-4 节 │
+  │  大学英语                                   │
+  │  某某教学楼xxx教室                          │
+  ├────────────────────────────────────────────┤
+  │  14:00 - 15:40                    第 5-6 节 │
+  │  高等数学                                   │
+  │  某某教学楼xxx教室                          │
+  └────────────────────────────────────────────┤
+    还有 1 节 · 点开查看                        ← 仅溢出时显示
+  └────────────────────────────────────────────┘
+
+  【为什么不用 ListView 做横向翻页了】
+    之前用 ListView + RemoteViewsService 实现「左右滑动一次一屏」，
+    在真机（vivo OriginOS）上**整条 collection 链路从未被系统绑定**
+    （`dumpsys activity services` 里查不到 RemoteViewsService），
+    桌面只显示 launcher 的默认占位（白卡片 + 转圈），点击也无反应。
+
+    而且 RemoteViews 里**能滚动的控件只有 ListView / AdapterViewFlipper**
+    （必须带 @RemoteView 注解），
+      · HorizontalScrollView / ScrollView —— **没有该注解，根本不能出现**
+      · ViewFlipper 有注解，但 RemoteViews.addView() 只允许在 collection item
+        里用，根布局无法动态加子视图 → 页数只能写死，且翻页要 App 往返
+
+    → 结论：**这一版先回到「静态布局」这个已验证能正常渲染的形态**，
+      保证组件不空白。课程卡固定 3 个槽位，超出用底部一行提示。
+
+  【空间怎么分配】
+    3 个课程卡都是 `height=0dp + weight=1` → 均分「头部/分隔线/提示行」之外的
+    全部高度。用户在桌面把组件拉高（resizeMode 已放开 vertical），
+    卡片就自动变高，信息不会截断 —— 这就是「随屏幕自适应」。
+
+  ⚠️ RemoteViews 只支持有限控件：LinearLayout / FrameLayout / RelativeLayout /
+     GridLayout + TextView / ImageView / Button / ProgressBar…
+     不要用 <View> 画分隔线（不支持），用窄 LinearLayout 代替。
+  ⚠️ XML 注释里不能出现连续两个减号。
+  ⚠️ RemoteViews 不支持动态增删子视图，所以槽位必须**写死在 XML 里**。
+
+  配色与 App 主题一致（c-bg #EAF5F5 / c-text #2F4F4F / c-meta #7A9A9A）。
+  RemoteViews 读不到 uni.scss，所以这里硬编码 —— 改主题色时同步改本文件。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/qkb_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical"
+  android:background="#EAF5F5"
+  android:paddingLeft="8dp"
+  android:paddingRight="8dp"
+  android:paddingTop="7dp"
+  android:paddingBottom="7dp">
+
+  <!-- ══════════ 固定头部：今天 + 周次 ══════════ -->
+  <LinearLayout
+    android:id="@+id/qkb_header"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical">
+
+    <TextView
+      android:id="@+id/qkb_head_title"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="今天"
+      android:textColor="#2F4F4F"
+      android:textSize="13sp"
+      android:textStyle="bold"
+      android:maxLines="1"
+      android:ellipsize="end" />
+
+    <TextView
+      android:id="@+id/qkb_head_week"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="第 1 周"
+      android:textColor="#7A9A9A"
+      android:textSize="11sp"
+      android:maxLines="1" />
+  </LinearLayout>
+
+  <!-- 头部与课程卡的分隔线（用窄条 LinearLayout 代替 View） -->
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="1dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="5dp"
+    android:background="#D8ECEC" />
+
+  <!-- ══════════ 课程槽位 0 ══════════ -->
+  <LinearLayout
+    android:id="@+id/qkb_card_0"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:background="@drawable/qkb_block_0"
+    android:paddingLeft="7dp"
+    android:paddingRight="7dp"
+    android:paddingTop="5dp"
+    android:paddingBottom="5dp">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:gravity="center_vertical">
+
+      <TextView
+        android:id="@+id/qkb_time_0"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="#7A9A9A"
+        android:textSize="10sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+      <TextView
+        android:id="@+id/qkb_section_0"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#7A9A9A"
+        android:textSize="10sp"
+        android:maxLines="1" />
+    </LinearLayout>
+
+    <TextView
+      android:id="@+id/qkb_name_0"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="1dp"
+      android:textColor="#2F4F4F"
+      android:textSize="13sp"
+      android:textStyle="bold"
+      android:maxLines="2"
+      android:ellipsize="end" />
+
+    <TextView
+      android:id="@+id/qkb_place_0"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:textColor="#7A9A9A"
+      android:textSize="10sp"
+      android:maxLines="1"
+      android:ellipsize="end" />
+  </LinearLayout>
+
+  <!-- ══════════ 课程槽位 1 ══════════ -->
+  <LinearLayout
+    android:id="@+id/qkb_card_1"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:layout_marginTop="4dp"
+    android:orientation="vertical"
+    android:background="@drawable/qkb_block_1"
+    android:paddingLeft="7dp"
+    android:paddingRight="7dp"
+    android:paddingTop="5dp"
+    android:paddingBottom="5dp">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:gravity="center_vertical">
+
+      <TextView
+        android:id="@+id/qkb_time_1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="#7A9A9A"
+        android:textSize="10sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+      <TextView
+        android:id="@+id/qkb_section_1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#7A9A9A"
+        android:textSize="10sp"
+        android:maxLines="1" />
+    </LinearLayout>
+
+    <TextView
+      android:id="@+id/qkb_name_1"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="1dp"
+      android:textColor="#2F4F4F"
+      android:textSize="13sp"
+      android:textStyle="bold"
+      android:maxLines="2"
+      android:ellipsize="end" />
+
+    <TextView
+      android:id="@+id/qkb_place_1"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:textColor="#7A9A9A"
+      android:textSize="10sp"
+      android:maxLines="1"
+      android:ellipsize="end" />
+  </LinearLayout>
+
+  <!-- ══════════ 课程槽位 2 ══════════ -->
+  <LinearLayout
+    android:id="@+id/qkb_card_2"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:layout_marginTop="4dp"
+    android:orientation="vertical"
+    android:background="@drawable/qkb_block_2"
+    android:paddingLeft="7dp"
+    android:paddingRight="7dp"
+    android:paddingTop="5dp"
+    android:paddingBottom="5dp">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:gravity="center_vertical">
+
+      <TextView
+        android:id="@+id/qkb_time_2"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="#7A9A9A"
+        android:textSize="10sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+      <TextView
+        android:id="@+id/qkb_section_2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#7A9A9A"
+        android:textSize="10sp"
+        android:maxLines="1" />
+    </LinearLayout>
+
+    <TextView
+      android:id="@+id/qkb_name_2"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="1dp"
+      android:textColor="#2F4F4F"
+      android:textSize="13sp"
+      android:textStyle="bold"
+      android:maxLines="2"
+      android:ellipsize="end" />
+
+    <TextView
+      android:id="@+id/qkb_place_2"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:textColor="#7A9A9A"
+      android:textSize="10sp"
+      android:maxLines="1"
+      android:ellipsize="end" />
+  </LinearLayout>
+
+  <!-- ══════════ 溢出提示（仅当今天课程多于 3 节时显示）══════════ -->
+  <TextView
+    android:id="@+id/qkb_more"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="3dp"
+    android:gravity="center"
+    android:textColor="#9AB4B4"
+    android:textSize="10sp"
+    android:maxLines="1"
+    android:visibility="gone" />
+
+</LinearLayout>

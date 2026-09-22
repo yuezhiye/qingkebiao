@@ -1,0 +1,31 @@
+{
+  "id": "qkb-widget",
+  "displayName": "轻课表桌面小组件",
+  "version": "0.1.0",
+  "description": "在手机桌面显示今日 / 明日课程（4×2、2×2 两种尺寸）。纯本地读取，零网络、零权限。",
+  "keywords": ["课程表", "小组件", "widget", "appwidget"],
+  "dcloudext": {
+    "type": "uts",
+    "sale": {
+      "regular": { "price": "0.00" },
+      "sourcecode": { "price": "0.00" }
+    },
+    "npmurl": ""
+  },
+  "uni_modules": {
+    "dependencies": [],
+    "encrypt": [],
+    "platforms": {
+      "cloud": { "tcb": "n", "aliyun": "n" },
+      "client": {
+        "App": {
+          "app-vue": "y",
+          "app-nvue": "n"
+        },
+        "H5-mobile": { "Safari": "n", "Android Browser": "n", "微信浏览器(Android)": "n" },
+        "小程序": { "微信": "n", "阿里": "n", "百度": "n", "字节跳动": "n", "QQ": "n" },
+        "快应用": { "华为": "n", "联盟": "n" }
+      }
+    }
+  }
+}
