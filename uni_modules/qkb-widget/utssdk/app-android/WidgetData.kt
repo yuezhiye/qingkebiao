@@ -217,20 +217,29 @@ private fun hashString(s: String): Int {
 /**
  * 取课程色号（0 ~ BLOCK_DRAWABLES.size-1）
  *
- * ⚠️ 取值顺序必须与 utils/color.js#pickColor 一致：**colorSeed 优先，回退 name**。
- *    否则 App 与桌面会选到不同的颜色。
+ * 🔥 【数据契约】App 侧 `utils/widget.js#toWidgetCourse` 传下来的 `colorSeed`
+ *     **已经是色号**（0 ~ COLOR_POOL_SIZE-1 的整数），**不是**原始种子串。
+ *     App 侧已用 `pickColorSeed(c) = hashString(c.colorSeed || c.name) % 6` 算好；
+ *     之所以只传下标：RemoteViews 不能动态改 drawable 颜色，只能
+ *     `setBackgroundResource(预置资源 id)`，所以预置 6 个圆角 drawable 让原生选。
  *
- * ⚠️ `hashString` 在极端边界（hash 恰为 Int.MIN_VALUE）可能返回负数
- *    → 取模后为负 → 数组越界崩溃。这里做一次兜底修正。
+ * ⚠️ 历史 bug（2026-09-23 真机验收发现，已修）：本函数曾把 `colorSeed` 当**种子串**
+ *     再哈希一次，造成**双重哈希** → 桌面颜色与 App 整体错位。
+ *     实证：App 算出色号 5（淡紫），到桌面却显示 `hashString("5") % 6 = 2`（淡绿）；
+ *     色号 2 则变成 5。两门课的颜色正好互换，肉眼一看就是错的。
+ *
+ * ⚠️ 兜底：旧版本数据可能没有 colorSeed / 值不是合法下标 →
+ *     退回按课程名哈希，绝不越界崩溃。
  */
 private fun pickColorIndex(course: JSONObject?): Int {
     if (course == null) return 0
-    val seed = course.optString("colorSeed", "").ifEmpty {
-        course.optString("name", "")
-    }
+    // ① 正常路径：colorSeed 就是色号，直接用
+    val idx = course.optInt("colorSeed", -1)
+    if (idx in BLOCK_DRAWABLES.indices) return idx
+    // ② 兜底：按课程名哈希（兼容旧数据 / 字段缺失 / 非法值）
+    val seed = course.optString("name", "")
     if (seed.isEmpty()) return 0
     val mod = hashString(seed) % BLOCK_DRAWABLES.size
-    // 兜底：负数 / 越界都退回 0 号色（绝不因为取色把小组件搞崩）
     return if (mod in BLOCK_DRAWABLES.indices) mod else 0
 }
 

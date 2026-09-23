@@ -134,9 +134,11 @@ private fun hashString(s: String): Int {
  */
 private fun pickColorIndex(course: JSONObject?): Int {
     if (course == null) return 0
-    val seed = course.optString("colorSeed", "").ifEmpty {
-        course.optString("name", "")
-    }
+    // ⚠️ 契约同 WidgetData.kt#pickColorIndex：colorSeed 已经是色号，不要再哈希一次。
+    //    （本文件属已废弃的翻页链路，但同一 bug 不该留在代码库里，故一并修正。）
+    val idx = course.optInt("colorSeed", -1)
+    if (idx in BLOCK_DRAWABLES.indices) return idx
+    val seed = course.optString("name", "")
     if (seed.isEmpty()) return 0
     val mod = hashString(seed) % BLOCK_DRAWABLES.size
     // 兜底：负数 / 越界都退回 0 号色（绝不因为取色把小组件搞崩）
