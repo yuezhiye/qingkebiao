@@ -25,7 +25,7 @@
 
   <application>
 
-    <!-- ── 桌面小组件（4×2：今天课程，横向滑动）── -->
+    <!-- ── 桌面小组件（4×2：今天课程，静态 3 槽位）── -->
     <receiver
       android:name="uts.sdk.modules.qkbWidget.QkbWidgetProvider"
       android:exported="true"
@@ -39,19 +39,33 @@
     </receiver>
 
     <!--
-      ── 横向课程列表的数据源 Service ──
+      ── ⛔ 已废弃：「横向课程列表」的数据源 Service（保留未删，待清理）──
 
-      【为什么需要它】
-        4×2 里要横向滑动看课程，用的是 ListView（RemoteViews 唯一支持的滚动集合）。
-        而 ListView 的内容**不能**在 provider 里直接塞，必须走官方链路：
+      【当前状态】**没有任何代码引用它**。小组件现在是「静态 3 槽位」纯布局，
+        不走 ListView，因此不需要 RemoteViewsService。
+        （布局见 res/layout/qkb_widget_static.xml）
+
+      【为什么当初加它】
+        曾想用 ListView + setRemoteAdapter 做「左右滑动逐节查看」。
+        而 ListView 的内容不能在 provider 里直接塞，必须走官方链路：
           setRemoteAdapter(intent) → 系统绑定本 Service → Factory.getViewAt() 逐项渲染。
-        没注册这个 Service → 列表一片空白，**且不会报任何错**（最坑的一种）。
 
-      ⚠️ android:permission="android.permission.BIND_REMOTEVIEWS" **必须写** ——
-         这是系统（AppWidgetService）绑定该 Service 的必要权限。
-         漏写则系统拒绝绑定，列表恒为空。
-      ⚠️ android:exported="false" —— 该 Service 只允许系统通过权限绑定，
-         不对外开放（配合上面的 permission 一起用，与 widget receiver 的 true 不同）。
+      【为什么废弃了】2026-09-18 真机（vivo OriginOS）实测证伪：
+        系统**从不绑定**这个 Service（`dumpsys activity services | grep QkbWidget` 恒为空），
+        桌面只显示 launcher 默认占位（白卡片 + 转圈），点击无反应。
+        根因：RemoteViews 里**能滚动的控件只有 ListView / AdapterViewFlipper**，
+        且二者都必须配 RemoteViewsService —— 这条链路一旦不被系统绑定，就没有替代方案。
+        → 横向滚动在桌面小组件里**做不了**，遂整体改为静态槽位。
+
+      【保留原因 + 清理条件】
+        保留是为了「万一将来要复现排查」。删除前需确认：
+          ① QkbWidgetService.kt 与 QkbWidgetFactory 一并删除（否则类还在、Service 未注册，无害但冗余）
+          ② res/layout/qkb_widget_4x2.xml + qkb_widget_4x2_item.xml 一并删除（均无引用）
+        上述文件在 0.2.0 中**保持原样未动**，避免发布前引入变量。
+
+      ⚠️ android:permission="android.permission.BIND_REMOTEVIEWS" ——
+         若将来恢复此链路，该权限必须写，否则系统拒绝绑定；漏写则列表恒为空且不报错。
+      ⚠️ android:exported="false" —— 只允许系统通过权限绑定，不对外开放。
     -->
     <service
       android:name="uts.sdk.modules.qkbWidget.QkbWidgetService"

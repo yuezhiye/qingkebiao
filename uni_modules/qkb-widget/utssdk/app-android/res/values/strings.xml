@@ -8,7 +8,5 @@
 -->
 <resources>
   <string name="qkb_widget_name_4x2">轻课表 · 今日课程</string>
-  <string name="qkb_widget_desc_4x2">今天的课程，左右滑动逐节查看</string>
-  <string name="qkb_widget_name_2x2">轻课表 · 下节课</string>
-  <string name="qkb_widget_desc_2x2">显示下一节课程</string>
+  <string name="qkb_widget_desc_4x2">在桌面一眼看全今天的课程安排</string>
 </resources>
